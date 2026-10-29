@@ -1,7 +1,8 @@
-enable-email-notifications: true
+#enable-email-notifications: true
 on:
   workflow_dispatch:
   push:
+    branches: ['stable-rebuilds']
   schedule:
     - cron: '22 22 * * 6'
       timezone: "America/New_York"
@@ -17,7 +18,7 @@ jobs:
 
       - name: Install buildah
         run: |
-          echo Repository name: ${{ env.FORGEJO_REPOSITORY }}
+          echo Repository name: ${{ github.repository }}
           DEBIAN_FRONTEND=noninteractive apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y buildah
 
@@ -28,7 +29,7 @@ jobs:
           CARGO_PROFILE_RELEASE_STRIP: true
           CARGO_PROFILE_RELEASE_LTO: thin
         run: |
-          CONT_LATEST="codeberg.org/stable-alpine-rootless:latest"
+          CONT_LATEST="ghcr.io/chennin/lldap:stable-alpine-rootless"
           buildah --storage-driver="$STORAGE_DRIVER" \
                   build \
                     --isolation="$BUILDAH_ISOLATION" \
@@ -52,9 +53,9 @@ jobs:
           buildah --storage-driver $STORAGE_DRIVER from --pull=never --name version "${CONT_LATEST}"
           LV=$(buildah --storage-driver $STORAGE_DRIVER run --entrypoint /app/lldap version -V | awk '{print $2}')
           echo "Container version: ${CONT_VER}"
-          CONT_WITH_VER=${CONT_LATEST%%:*}:${CONT_VER}
+          CONT_WITH_VER=${CONT_LATEST}-${CONT_VER}
           buildah --storage-driver $STORAGE_DRIVER tag "${CONT_LATEST}" "${CONT_WITH_VER}
-          echo ${{ secrets.PACKAGE_RW }} | buildah login --password-stdin -u ${{ env.FORGEJO_ACTOR }} codeberg.org
+          echo ${{ secrets.PACKAGE_RW }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
           buildah --storage-driver $STORAGE_DRIVER push "${CONT_LATEST}"
           buildah --storage-driver $STORAGE_DRIVER push "${CONT_WITH_VER}"
           buildah --storage-driver="$STORAGE_DRIVER" prune -a -f
