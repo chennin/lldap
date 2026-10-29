@@ -27,7 +27,7 @@ jobs:
           STORAGE_DRIVER: vfs
           BUILDAH_ISOLATION: chroot
           CARGO_PROFILE_RELEASE_STRIP: true
-          CARGO_PROFILE_RELEASE_LTO: thin
+          CARGO_PROFILE_RELEASE_LTO: "thin"
         run: |
           CONT_LATEST="ghcr.io/chennin/lldap:stable-alpine-rootless"
           buildah --storage-driver="$STORAGE_DRIVER" \
@@ -53,7 +53,7 @@ jobs:
                     --file .github/workflows/Dockerfile.ci.alpine-rootless \
                     -t "${CONT_LATEST}" .
           buildah --storage-driver $STORAGE_DRIVER from --pull=never --name version "${CONT_LATEST}"
-          LV=$(buildah --storage-driver $STORAGE_DRIVER run --entrypoint /app/lldap version -V | awk '{print $2}')
+          LV=$(buildah --storage-driver $STORAGE_DRIVER run version /app/lldap -V | awk '{print $2}')
           echo "Container version: ${CONT_VER}"
           CONT_WITH_VER=${CONT_LATEST}-${CONT_VER}
           buildah --storage-driver $STORAGE_DRIVER tag "${CONT_LATEST}" "${CONT_WITH_VER}

@@ -29,8 +29,8 @@ RUN cp target/lldap /lldap/ && \
 
 WORKDIR /lldap
 RUN set -x \
-    && for file in $(cat /lldap/app/static/libraries.txt); do wget -P app/static "$file"; done \
-    && for file in $(cat /lldap/app/static/fonts/fonts.txt); do wget -P app/static/fonts "$file"; done \
+    && for file in $(cat /lldap/app/static/libraries.txt); do wget --no-verbose -P app/static "$file"; done \
+    && for file in $(cat /lldap/app/static/fonts/fonts.txt); do wget --no-verbose -P app/static/fonts "$file"; done \
     && chmod a+r -R .
 
 FROM alpine:3.24
