@@ -36,7 +36,9 @@ jobs:
                     --file .github/workflows/Dockerfile.dev \
                     -t "lldap/rust-dev" .
           buildah --storage-driver $STORAGE_DRIVER from --pull=never --name rust-builder lldap/rust-dev
-          buildah --storage-driver $STORAGE_DRIVER run -v $PWD:/data rust-builder sh -c "cd /data; cargo build --target=x86_64-unknown-linux-musl --release -p lldap"
+          buildah --storage-driver $STORAGE_DRIVER run -v $PWD:/data rust-builder sh -c \
+             "cd /data; cargo build --target=x86_64-unknown-linux-musl --release -p lldap;
+              cargo install --locked wasm-pack; ./app/build.sh"
           mkdir bin && mv target/x86_64-unknown-linux-musl/release bin/x86_64-unknown-linux-musl-lldap-bin
           buildah --storage-driver="$STORAGE_DRIVER" \
                   build \
