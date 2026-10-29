@@ -57,7 +57,7 @@ jobs:
           echo "Container version: ${CONT_VER}"
           CONT_WITH_VER="${CONT_LATEST}-${CONT_VER}"
           buildah --storage-driver $STORAGE_DRIVER tag "${CONT_LATEST}" "${CONT_WITH_VER}"
-          echo ${{ secrets.PACKAGE_RW }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
+          echo ${{ secrets.GITHUB_TOKEN }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
           buildah --storage-driver $STORAGE_DRIVER push "${CONT_LATEST}"
           buildah --storage-driver $STORAGE_DRIVER push "${CONT_WITH_VER}"
           buildah --storage-driver="$STORAGE_DRIVER" prune -a -f
