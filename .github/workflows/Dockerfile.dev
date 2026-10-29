@@ -12,12 +12,15 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
 
 ### Install Additional Build Tools
 RUN apt update && \
-    apt install -y --no-install-recommends curl git wget make perl pkg-config tar jq gzip && \
+    apt install -y --no-install-recommends curl git wget make perl pkg-config tar jq gzip coreutils && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
      
 ### Add musl-gcc
-RUN wget -c --tries=3 --retry-on-host-error https://musl.cc/x86_64-linux-musl-cross.tgz && \
+COPY SHA512SUMS SHA512SUMS
+RUN wget -c --no-verbose --tries=3 --retry-on-host-error --inet4-only \
+      https://github.com/VictoriaMetrics/muslcc-mirror/releases/download/v1.0.0/x86_64-linux-musl-cross.tgz && \
+    sha512sum -c SHA512SUMS && \
     tar zxf ./x86_64-linux-musl-cross.tgz -C /opt && \
     rm ./x86_64-linux-musl-cross.tgz
 
