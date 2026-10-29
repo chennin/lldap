@@ -25,6 +25,8 @@ jobs:
         env:
           STORAGE_DRIVER: vfs
           BUILDAH_ISOLATION: chroot
+          CARGO_PROFILE_RELEASE_STRIP: true
+          CARGO_PROFILE_RELEASE_LTO: thin
         run: |
           CONT_LATEST="codeberg.org/stable-alpine-rootless:latest"
           buildah --storage-driver="$STORAGE_DRIVER" \
