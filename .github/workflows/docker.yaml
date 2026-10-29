@@ -1,0 +1,58 @@
+enable-email-notifications: true
+on:
+  workflow_dispatch:
+  push:
+  schedule:
+    - cron: '22 22 * * 6'
+      timezone: "America/New_York"
+jobs:
+  container:
+    runs-on: codeberg-medium
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: 'stable-rebuilds'
+
+      - name: Install buildah
+        run: |
+          echo Repository name: ${{ env.FORGEJO_REPOSITORY }}
+          DEBIAN_FRONTEND=noninteractive apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y buildah
+
+      - name: Build OCI image
+        env:
+          STORAGE_DRIVER: vfs
+          BUILDAH_ISOLATION: chroot
+        run: |
+          CONT_LATEST="codeberg.org/stable-alpine-rootless:latest"
+          buildah --storage-driver="$STORAGE_DRIVER" \
+                  build \
+                    --isolation="$BUILDAH_ISOLATION" \
+                    --file .github/workflows/Dockerfile.dev \
+                    -t "lldap/rust-dev" .
+          buildah --storage-driver $STORAGE_DRIVER from --pull=never --name rust-builder lldap/rust-dev
+          buildah --storage-driver $STORAGE_DRIVER run -v $PWD:/data rust-builder sh -c "cd /data; cargo build --target=x86_64-unknown-linux-musl --release -p lldap"
+          mkdir bin && mv target/x86_64-unknown-linux-musl/release bin/x86_64-unknown-linux-musl-lldap-bin
+          buildah --storage-driver="$STORAGE_DRIVER" \
+                  build \
+                    --isolation="$BUILDAH_ISOLATION" \
+                    --build-arg TARGETPLATFORM=linux/amd64 \
+                    --file .github/workflows/Dockerfile.ci.alpine-base \
+                    -t "lldap/alpine-base" .
+          buildah --storage-driver="$STORAGE_DRIVER" \
+                  build \
+                    --isolation="$BUILDAH_ISOLATION" \
+                    --build-arg TARGETPLATFORM=linux/amd64 \
+                    --file .github/workflows/Dockerfile.ci.alpine-rootless \
+                    -t "${CONT_LATEST}" .
+          buildah --storage-driver $STORAGE_DRIVER from --pull=never --name version "${CONT_LATEST}"
+          LV=$(buildah --storage-driver $STORAGE_DRIVER run --entrypoint /app/lldap version -V | awk '{print $2}')
+          echo "Container version: ${CONT_VER}"
+          CONT_WITH_VER=${CONT_LATEST%%:*}:${CONT_VER}
+          buildah --storage-driver $STORAGE_DRIVER tag "${CONT_LATEST}" "${CONT_WITH_VER}
+          echo ${{ secrets.PACKAGE_RW }} | buildah login --password-stdin -u ${{ env.FORGEJO_ACTOR }} codeberg.org
+          buildah --storage-driver $STORAGE_DRIVER push "${CONT_LATEST}"
+          buildah --storage-driver $STORAGE_DRIVER push "${CONT_WITH_VER}"
+          buildah --storage-driver="$STORAGE_DRIVER" prune -a -f
