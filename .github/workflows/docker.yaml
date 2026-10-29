@@ -19,8 +19,8 @@ jobs:
       - name: Install buildah
         run: |
           echo Repository name: ${{ github.repository }}
-          DEBIAN_FRONTEND=noninteractive apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y buildah
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y buildah
 
       - name: Build OCI image
         env:
