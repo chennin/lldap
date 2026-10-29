@@ -57,8 +57,8 @@ jobs:
                     -t "${CONT_LATEST}" .
           buildah --storage-driver $STORAGE_DRIVER from --pull=never --name version "${CONT_LATEST}"
           LV=$(buildah --storage-driver $STORAGE_DRIVER run version /app/lldap -V | awk '{print $2}')
-          echo "Container version: ${CONT_VER}"
-          CONT_WITH_VER="${CONT_LATEST}-${CONT_VER}"
+          echo "Container version: ${LV}"
+          CONT_WITH_VER="${CONT_LATEST}-${LV}"
           buildah --storage-driver $STORAGE_DRIVER tag "${CONT_LATEST}" "${CONT_WITH_VER}"
           echo ${{ secrets.GITHUB_TOKEN }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
           buildah --storage-driver $STORAGE_DRIVER push "${CONT_LATEST}"
