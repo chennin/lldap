@@ -42,7 +42,8 @@ jobs:
           buildah --storage-driver $STORAGE_DRIVER run -v $PWD:/data rust-builder sh -c \
              "cd /data; cargo build --target=x86_64-unknown-linux-musl --release -p lldap;
               cargo install --locked wasm-pack; ./app/build.sh"
-          mkdir bin && mv target/x86_64-unknown-linux-musl/release bin/x86_64-unknown-linux-musl-lldap-bin
+          mkdir bin && mv target/x86_64-unknown-linux-musl/release bin/x86_64-unknown-linux-musl-lldap-bin && \
+          cp -pr app web
           buildah --storage-driver="$STORAGE_DRIVER" \
                   build \
                     --isolation="$BUILDAH_ISOLATION" \

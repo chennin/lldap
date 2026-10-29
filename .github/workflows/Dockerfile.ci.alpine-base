@@ -1,12 +1,13 @@
 FROM docker.io/debian:trixie AS lldap
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TARGETPLATFORM
+WORKDIR /dim
+COPY bin bin/
+COPY web web/
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-WORKDIR /dim
-COPY bin/ bin/
-COPY app/ web/
 
 RUN mkdir -p target/
 RUN mkdir -p /lldap/app
@@ -20,7 +21,7 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
 
 # Web and App dir
 COPY lldap_config.docker_template.toml /lldap/
-COPY app/index_local.html web/index.html
+COPY web/index_local.html web/index.html
 RUN cp target/lldap /lldap/ && \
     cp -R web/index.html \
           web/pkg \
