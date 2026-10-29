@@ -7,7 +7,7 @@ on:
       timezone: "America/New_York"
 jobs:
   container:
-    runs-on: codeberg-medium
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
