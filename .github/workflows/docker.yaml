@@ -1,0 +1,68 @@
+#enable-email-notifications: true
+on:
+  workflow_dispatch:
+  push:
+    branches: ['stable-rebuilds']
+  schedule:
+    - cron: '22 05 * * 5'
+      timezone: "America/New_York"
+jobs:
+  container:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 'stable-rebuilds'
+
+      - name: Install buildah
+        run: |
+          echo Repository name: ${{ github.repository }}
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y buildah
+
+      - name: Build OCI image
+        env:
+          STORAGE_DRIVER: vfs
+          BUILDAH_ISOLATION: chroot
+          CARGO_PROFILE_RELEASE_STRIP: true
+          CARGO_PROFILE_RELEASE_LTO: "thin"
+        run: |
+          CONT_LATEST="ghcr.io/chennin/lldap:stable-alpine-rootless"
+          buildah --storage-driver="$STORAGE_DRIVER" \
+                  build \
+                    --isolation="$BUILDAH_ISOLATION" \
+                    --file .github/workflows/Dockerfile.dev \
+                    -t "lldap/rust-dev" .
+          buildah --storage-driver "${STORAGE_DRIVER}" from --pull=never --name rust-builder lldap/rust-dev
+          buildah --storage-driver "${STORAGE_DRIVER}" run -v "$PWD":/data rust-builder sh -c \
+             "cd /data; cargo build --target=x86_64-unknown-linux-musl --release -p lldap;
+              cargo install --locked wasm-pack; ./app/build.sh"
+          mkdir bin && mv target/x86_64-unknown-linux-musl/release bin/x86_64-unknown-linux-musl-lldap-bin && \
+          cp -pr app web
+          buildah --storage-driver="$STORAGE_DRIVER" \
+                  build \
+                    --isolation="$BUILDAH_ISOLATION" \
+                    --build-arg TARGETPLATFORM=linux/amd64 \
+                    --file .github/workflows/Dockerfile.ci.alpine-base \
+                    -t "lldap/alpine-base" .
+          buildah --storage-driver="$STORAGE_DRIVER" \
+                  build \
+                    --isolation="$BUILDAH_ISOLATION" \
+                    --build-arg TARGETPLATFORM=linux/amd64 \
+                    --file .github/workflows/Dockerfile.ci.alpine-rootless \
+                    -t "${CONT_LATEST}" .
+          buildah --storage-driver "${STORAGE_DRIVER}" from --pull=never --name version "${CONT_LATEST}"
+          LV=$(buildah --storage-driver "${STORAGE_DRIVER}" run version /app/lldap -V | awk '{print $2}')
+          echo "Container version: ${LV}"
+          CONT_WITH_VER="${CONT_LATEST}-${LV}"
+          buildah --storage-driver "${STORAGE_DRIVER}" tag "${CONT_LATEST}" "${CONT_WITH_VER}"
+          echo ${{ secrets.GITHUB_TOKEN }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
+          buildah --storage-driver "${STORAGE_DRIVER}" push "${CONT_LATEST}"
+          buildah --storage-driver "${STORAGE_DRIVER}" push "${CONT_WITH_VER}"
+          buildah --storage-driver="$STORAGE_DRIVER" prune -a -f
