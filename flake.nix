@@ -22,7 +22,7 @@
         };
 
         # MSRV from the project
-        rustVersion = "1.99.1";
+        rustVersion = "1.100.0";
         
         # Rust toolchain with required components
         rustToolchain = pkgs.rust-bin.stable.${rustVersion}.default.override {

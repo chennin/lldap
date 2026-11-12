@@ -4,7 +4,7 @@ on:
   push:
     branches: ['stable-rebuilds']
   schedule:
-    - cron: '22 22 * * 6'
+    - cron: '22 05 * * 5'
       timezone: "America/New_York"
 jobs:
   container:
@@ -15,7 +15,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: 'stable-rebuilds'
 
@@ -38,8 +39,8 @@ jobs:
                     --isolation="$BUILDAH_ISOLATION" \
                     --file .github/workflows/Dockerfile.dev \
                     -t "lldap/rust-dev" .
-          buildah --storage-driver $STORAGE_DRIVER from --pull=never --name rust-builder lldap/rust-dev
-          buildah --storage-driver $STORAGE_DRIVER run -v $PWD:/data rust-builder sh -c \
+          buildah --storage-driver "${STORAGE_DRIVER}" from --pull=never --name rust-builder lldap/rust-dev
+          buildah --storage-driver "${STORAGE_DRIVER}" run -v "$PWD":/data rust-builder sh -c \
              "cd /data; cargo build --target=x86_64-unknown-linux-musl --release -p lldap;
               cargo install --locked wasm-pack; ./app/build.sh"
           mkdir bin && mv target/x86_64-unknown-linux-musl/release bin/x86_64-unknown-linux-musl-lldap-bin && \
@@ -56,12 +57,12 @@ jobs:
                     --build-arg TARGETPLATFORM=linux/amd64 \
                     --file .github/workflows/Dockerfile.ci.alpine-rootless \
                     -t "${CONT_LATEST}" .
-          buildah --storage-driver $STORAGE_DRIVER from --pull=never --name version "${CONT_LATEST}"
-          LV=$(buildah --storage-driver $STORAGE_DRIVER run version /app/lldap -V | awk '{print $2}')
+          buildah --storage-driver "${STORAGE_DRIVER}" from --pull=never --name version "${CONT_LATEST}"
+          LV=$(buildah --storage-driver "${STORAGE_DRIVER}" run version /app/lldap -V | awk '{print $2}')
           echo "Container version: ${LV}"
           CONT_WITH_VER="${CONT_LATEST}-${LV}"
-          buildah --storage-driver $STORAGE_DRIVER tag "${CONT_LATEST}" "${CONT_WITH_VER}"
+          buildah --storage-driver "${STORAGE_DRIVER}" tag "${CONT_LATEST}" "${CONT_WITH_VER}"
           echo ${{ secrets.GITHUB_TOKEN }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
-          buildah --storage-driver $STORAGE_DRIVER push "${CONT_LATEST}"
-          buildah --storage-driver $STORAGE_DRIVER push "${CONT_WITH_VER}"
+          buildah --storage-driver "${STORAGE_DRIVER}" push "${CONT_LATEST}"
+          buildah --storage-driver "${STORAGE_DRIVER}" push "${CONT_WITH_VER}"
           buildah --storage-driver="$STORAGE_DRIVER" prune -a -f
