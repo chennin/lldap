@@ -4,7 +4,7 @@ on:
   push:
     branches: ['stable-rebuilds']
   schedule:
-    - cron: '22 05 * * 5'
+    - cron: '35 14 * * 1'
       timezone: "America/New_York"
 jobs:
   container:
