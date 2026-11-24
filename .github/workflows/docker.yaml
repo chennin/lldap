@@ -21,10 +21,12 @@ jobs:
           ref: 'stable-rebuilds'
 
       - name: Install buildah
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          echo Repository name: ${{ github.repository }}
-          sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y buildah
+          echo Repository name: ${{ env.GITHUB_REPOSITORY }}
+          apt-get update && \
+          apt-get install --no-install-recommends -y buildah netavark ca-certificates
 
       - name: Build OCI image
         env:
@@ -33,7 +35,7 @@ jobs:
           CARGO_PROFILE_RELEASE_STRIP: true
           CARGO_PROFILE_RELEASE_LTO: "thin"
         run: |
-          CONT_LATEST="ghcr.io/chennin/lldap:stable-alpine-rootless"
+          CONT_LATEST="${{ vars.REGISTRY }}/${{ env.GITHUB_REPOSITORY }}:stable-alpine-rootless"
           buildah --storage-driver="$STORAGE_DRIVER" \
                   build \
                     --isolation="$BUILDAH_ISOLATION" \
@@ -62,7 +64,7 @@ jobs:
           echo "Container version: ${LV}"
           CONT_WITH_VER="${CONT_LATEST}-${LV}"
           buildah --storage-driver "${STORAGE_DRIVER}" tag "${CONT_LATEST}" "${CONT_WITH_VER}"
-          echo ${{ secrets.GITHUB_TOKEN }} | buildah login --password-stdin -u ${{ github.actor }} ghcr.io
+          echo ${{ secrets.PACKAGE_RW }} | buildah login --password-stdin -u ${{ vars.REGISTRY_USER }} ${{ vars.REGISTRY }}
           buildah --storage-driver "${STORAGE_DRIVER}" push "${CONT_LATEST}"
           buildah --storage-driver "${STORAGE_DRIVER}" push "${CONT_WITH_VER}"
           buildah --storage-driver="$STORAGE_DRIVER" prune -a -f
