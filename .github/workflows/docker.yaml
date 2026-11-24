@@ -1,4 +1,4 @@
-#enable-email-notifications: true
+enable-email-notifications: true
 on:
   workflow_dispatch:
   push:
